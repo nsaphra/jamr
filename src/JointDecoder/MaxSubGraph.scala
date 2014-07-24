@@ -79,7 +79,7 @@ class MaxSubGraph(stage1FeatureNames: List[String],
         var x: Option[Edge] = queue.shift()
         while (x != None) {
             val edge = x match { case Some(e) => e }
-            addEdge(edge)
+            confirmEdge(edge)
             x = queue.dequeue()
         }
 

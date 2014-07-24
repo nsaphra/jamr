@@ -114,7 +114,7 @@ class EdgeQueue(nodes: Map[Node, Int],
         }
     }
 
-    def insert(e: Edge,
+    def insert(e: Fragment,
                var after: Option[Link]) : Link = {
         var cur: Option[Link] = after
         while (cur != None) {
@@ -123,7 +123,7 @@ class EdgeQueue(nodes: Map[Node, Int],
                 case None => None
                 case Some(next) => {
                     after = cur
-                    if (next.weight <= e.weight) {
+                    if (next.totalWeight <= e.totalWeight) {
                         None
                     } else {
                         x.next
@@ -134,8 +134,11 @@ class EdgeQueue(nodes: Map[Node, Int],
         return queue.insertAfter(e, after)
     }
 
-    def adjustEdges(node: Node) {
+    def adjustEdges(node: Node) : List[Fragment] {
         // Subtracts node weight from its edges
+        // @return A list of fragments that can be added to graph immediately
+
+        edges_to_confirm = new List[Edge]()
 
         if (node.weight == 0) {
             return
@@ -147,13 +150,23 @@ class EdgeQueue(nodes: Map[Node, Int],
             queue.remove(elt)
         }
 
-        var sorted_edges: Array[Fragment] = {
+        var sorted_edges: List[Fragment] = {
             for (elt <- old_edge_elts) {
                 edge = elt.data
-                edge.weight -= node.weight
-                yield edge
+                edge.totalWeight -= node.weight
+                edge.nodesWeighed--
+                if (edge.nodesWeighed != 0) {
+                    yield edge
+                }
+                else {
+                    if (edge.totalWeight == 0) {
+                        yield edge
+                    } else if (edge.totalWeight > 0) {
+                        edges_to_confirm.append(edge.edge)
+                    } // else edge.totalWeight < 0; remove node
+                }
             }
-        }.sortWith((x, y) => x.data.weight > y.data.weight)
+        }.sortWith((x, y) => x.data.totalWeight > y.data.totalWeight)
 
         // Re-inserting in order means re-inserting all edges is linear in
         // the length of the list
@@ -163,6 +176,8 @@ class EdgeQueue(nodes: Map[Node, Int],
             node2edges[node].add(new_elt)
             cur_after = Some(new_elt)
         }
+
+        return edges_to_confirm
     }
 
     def nodeAdded(node: Node) {
