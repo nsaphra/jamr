@@ -5,12 +5,14 @@ import edu.cmu.lti.nlp.amr.FastFeatureVector._
 import scala.collection.mutable.List
 import scala.collection.mutable.Map
 import scala.collection.mutable.Set
+import scala.util.Sorting.stableSort
 
 class EdgeQueue(nodes: Map[Node, Int],
                 edges: Map[Edge, Int],
                 eliminatedNodes: Node => Set[Node]) {
 
-    class DoubleLinkedList[A](list) extends Iterable[LinkedNode[A]] {
+    class DoubleLinkedList[A](list: List[A],
+                              key_fun: A => math.Ordering) extends Iterable[LinkedNode[A]] {
 
         class LinkedNode[A](data: A, var next: Option[LinkedNode[A]]) {
 
@@ -31,7 +33,9 @@ class EdgeQueue(nodes: Map[Node, Int],
         }
 
         val tail: Option[LinkedNode[A]] = None
-        var head = list.foldRight(tail) { (z, f) => LinkedNode[A](f, z) }
+        var head = stableSort(list, (x,y) => key_fun(x) > key_fun(y)).foldRight(tail) {
+            (z, f) => LinkedNode[A](f, z)
+        }
 
         def prepend(data: A) : LinkedNode[A] = {
             head = LinkedNode[A](data, head)
@@ -42,6 +46,36 @@ class EdgeQueue(nodes: Map[Node, Int],
             case None => prepend(A)
             case Some(n) => {
                 LinkedNode[A](data, n.next)
+            }
+        }
+
+        def insertSomewhereAfter(e: Fragment,
+                                 var after: Option[Link]) : LinkedNode[A] = {
+            var cur: Option[Link] = after
+            while (cur != None) {
+                elt = cur match { case Some(x) => x }
+                cur = elt.next match {
+                    case None => None
+                    case Some(next) => {
+                        after = cur
+                        if (key_fun(next) > key_fun(e)) {
+                            None
+                        } else {
+                            x.next
+                        }
+                    }
+                }
+            }
+            return queue.insertAfter(e, after)
+        }
+
+        def insertAll(new_data: List[A]) : List[LinkedNode[A]] = {
+            sorted_data = stableSort(new_data, key_fun)
+            var cur_after: Option[Link] = head
+            for (datum <- sorted_data) {
+                new_elt = insertSomewhereAfter(elt.data, cur_after)
+                cur_after = Some(new_elt)
+                yield new_elt
             }
         }
 
@@ -85,12 +119,11 @@ class EdgeQueue(nodes: Map[Node, Int],
     type Link = DoubleLinkedList.LinkedNode[Fragment]
 
     // Queue of edges sorted with highest scores on top
-    var queue: DoubleLinkedList[Fragment] = {
-        fragments: List[Fragment] =
-            for (edge <- edges) yield Fragment(edge,
-                                               edge.weight + edge.node1.weight + edge.node2.weight)
-        fragments.sortWith((x, y) => x._2 > y._2)
-    }
+    var queue = new DoubleLinkedList(
+        for (edge <- edges) yield
+            Fragment(edge, edge.weight + edge.node1.weight + edge.node2.weight),
+        (x: Fragment) => x.totalWeight
+    )
 
     // Map of nodes to the Edge LinkedNodes connected to them
     var node2edges: Map[Node, Set[Link]] = {
@@ -114,26 +147,6 @@ class EdgeQueue(nodes: Map[Node, Int],
         }
     }
 
-    def insert(e: Fragment,
-               var after: Option[Link]) : Link = {
-        var cur: Option[Link] = after
-        while (cur != None) {
-            elt = cur match { case Some(x) => x }
-            cur = elt.next match {
-                case None => None
-                case Some(next) => {
-                    after = cur
-                    if (next.totalWeight <= e.totalWeight) {
-                        None
-                    } else {
-                        x.next
-                    }
-                }
-            }
-        }
-        return queue.insertAfter(e, after)
-    }
-
     def adjustEdges(node: Node) : List[Fragment] {
         // Subtracts node weight from its edges
         // @return A list of fragments that can be added to graph immediately
@@ -143,13 +156,13 @@ class EdgeQueue(nodes: Map[Node, Int],
             return
         }
 
-        val old_edge_elts = node2edges[node]
+        val old_elts = node2edges[node]
         node2edges[Node] = new Set[Link]()
-        for (elt <- old_edge_elts) {
+        for (elt <- old_elts) {
             queue.remove(elt)
         }
 
-        var sorted_edges: List[Fragment] = {
+        var new_frags: List[Fragment] = {
             for (elt <- old_edge_elts) {
                 edge = elt.data
                 edge.totalWeight -= node.weight
@@ -165,15 +178,12 @@ class EdgeQueue(nodes: Map[Node, Int],
                     } // else edge.totalWeight < 0; remove node
                 }
             }
-        }.sortWith((x, y) => x.data.totalWeight > y.data.totalWeight)
+        }
 
         // Re-inserting in order means re-inserting all edges is linear in
         // the length of the list
-        var cur_after: Option[Link] = queue.head
-        for (elt <- sorted_elts) {
-            new_elt = insert(elt.data, cur_after)
+        for (elt <- queue.insertAll(new_frags)) {
             node2edges[node].add(new_elt)
-            cur_after = Some(new_elt)
         }
 
         return edges_to_confirm
