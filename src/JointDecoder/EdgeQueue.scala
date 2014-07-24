@@ -8,9 +8,9 @@ import scala.collection.mutable.Set
 
 class EdgeQueue(nodes: Map[Node, Int],
                 edges: Map[Edge, Int],
-                eliminatedNodes: Map[Node, Set[Node]]) {
+                eliminatedNodes: Node => Set[Node]) {
 
-    class DoubleLinkedList[A](list) extends Traversable[LinkedNode[A]] {
+    class DoubleLinkedList[A](list) extends Iterable[LinkedNode[A]] {
 
         class LinkedNode[A](data: A, var next: Option[LinkedNode[A]]) {
 
@@ -78,20 +78,29 @@ class EdgeQueue(nodes: Map[Node, Int],
         }
     }
 
+    case class Fragment(edge: Edge,
+                        totalScore: Int,
+                        nodesWeighed: Int = 2) extends (Edge, Int, Int)(edge, totalScore, nodesWeighed)
+
     // Queue of edges sorted with highest scores on top
-    var queue = new DoubleLinkedList[Edge](edges.sortWith((x, y) => x._2 > y._2))
+    var queue: DoubleLinkedList[Fragment] = {
+        fragments: List[Fragment] =
+            for (edge <- edges) yield Fragment(edge,
+                                               edge.weight + edge.node1.weight + edge.node2.weight)
+        fragments.sortWith((x, y) => x._2 > y._2)
+    }
 
     // Map of nodes to the Edge LinkedNodes connected to them
-    var node2edges: Map[Node, Set[LinkedNode[Edge]]] = {
-        m = new Map((for (node <- nodes)
-                     yield node -> Set[LinkedNode[Edge]]()))
+    var node2edges: Map[Node, Set[LinkedNode[Fragment]]] = {
+        m = (for (node <- nodes)
+            yield node -> Set[LinkedNode[Fragment]]()))
         queue.foreach(x =>
             m[x.data.node1] += x
             m[x.data.node2] += x)
         m
     }
 
-    def remove(elt: DoubleLinkedList.LinkedNode[Edge]) : Edge {
+    def remove(elt: DoubleLinkedList.LinkedNode[Fragment]) : Fragment {
         node2edges[e.data.node1] -= elt
         node2edges[e.data.node2] -= elt
         return queue.remove(elt)
@@ -104,9 +113,9 @@ class EdgeQueue(nodes: Map[Node, Int],
     }
 
     def insert(e: Edge,
-               var after: Option[DoubleLinkedList.LinkedNode[Edge]]) :
-        DoubleLinkedList.LinkedNode[Edge] = {
-        var cur: Option[DoubleLinkedList.LinkedNode[Edge]] = after
+               var after: Option[DoubleLinkedList.LinkedNode[Fragment]]) :
+        DoubleLinkedList.LinkedNode[Fragment] = {
+        var cur: Option[DoubleLinkedList.LinkedNode[Fragment]] = after
         while (cur != None) {
             elt = cur match { case Some(x) => x }
             cur = elt.next match {
@@ -131,13 +140,13 @@ class EdgeQueue(nodes: Map[Node, Int],
             return
         }
 
-        val old_edge_elts: Set[LinkedNode[Edge]] = node2edges[node]
-        node2edges[Node] = new Set[Edge]()
+        val old_edge_elts = node2edges[node]
+        node2edges[Node] = new Set[DoubleLinkedList.LinkedNode[Fragment]]()
         for (elt <- old_edge_elts) {
             queue.remove(elt)
         }
 
-        var sorted_edges: List[Edge] = {
+        var sorted_edges: Array[Fragment] = {
             for (elt <- old_edge_elts) {
                 edge = elt.data
                 edge.weight -= node.weight
@@ -147,7 +156,7 @@ class EdgeQueue(nodes: Map[Node, Int],
 
         // Re-inserting in order means re-inserting all edges is linear in
         // the length of the list
-        var cur_after: Option[DoubleLinkedList.LinkedNode[Edge]] = queue.head
+        var cur_after: Option[DoubleLinkedList.LinkedNode[Fragment]] = queue.head
         for (elt <- sorted_elts) {
             new_elt = insert(elt.data, cur_after)
             node2edges[node].add(new_elt)
@@ -156,7 +165,7 @@ class EdgeQueue(nodes: Map[Node, Int],
     }
 
     def nodeAdded(node: Node) {
-        removeAll(eliminatedNodes[node])
+        removeAll(eliminatedNodes(node)
         adjustEdges(node)
     }
 

@@ -56,8 +56,6 @@ class MaxSubGraph(stage1FeatureNames: List[String],
         throw new notImplementedError()
     }
 
-
-
     def decode(input: Input) : FastFeatureVector.DecoderResult = {
         val nodes = addPotentialNodes()
         val edges = addPotentialEdges()
