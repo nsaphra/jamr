@@ -82,6 +82,8 @@ class EdgeQueue(nodes: Map[Node, Int],
                         totalScore: Int,
                         nodesWeighed: Int = 2) extends (Edge, Int, Int)(edge, totalScore, nodesWeighed)
 
+    type Link = DoubleLinkedList.LinkedNode[Fragment]
+
     // Queue of edges sorted with highest scores on top
     var queue: DoubleLinkedList[Fragment] = {
         fragments: List[Fragment] =
@@ -91,16 +93,16 @@ class EdgeQueue(nodes: Map[Node, Int],
     }
 
     // Map of nodes to the Edge LinkedNodes connected to them
-    var node2edges: Map[Node, Set[LinkedNode[Fragment]]] = {
+    var node2edges: Map[Node, Set[Link]] = {
         m = (for (node <- nodes)
-            yield node -> Set[LinkedNode[Fragment]]()))
+            yield node -> Set[Link]()))
         queue.foreach(x =>
             m[x.data.node1] += x
             m[x.data.node2] += x)
         m
     }
 
-    def remove(elt: DoubleLinkedList.LinkedNode[Fragment]) : Fragment {
+    def remove(elt: Link) : Fragment {
         node2edges[e.data.node1] -= elt
         node2edges[e.data.node2] -= elt
         return queue.remove(elt)
@@ -113,9 +115,8 @@ class EdgeQueue(nodes: Map[Node, Int],
     }
 
     def insert(e: Edge,
-               var after: Option[DoubleLinkedList.LinkedNode[Fragment]]) :
-        DoubleLinkedList.LinkedNode[Fragment] = {
-        var cur: Option[DoubleLinkedList.LinkedNode[Fragment]] = after
+               var after: Option[Link]) : Link = {
+        var cur: Option[Link] = after
         while (cur != None) {
             elt = cur match { case Some(x) => x }
             cur = elt.next match {
@@ -141,7 +142,7 @@ class EdgeQueue(nodes: Map[Node, Int],
         }
 
         val old_edge_elts = node2edges[node]
-        node2edges[Node] = new Set[DoubleLinkedList.LinkedNode[Fragment]]()
+        node2edges[Node] = new Set[Link]()
         for (elt <- old_edge_elts) {
             queue.remove(elt)
         }
@@ -156,7 +157,7 @@ class EdgeQueue(nodes: Map[Node, Int],
 
         // Re-inserting in order means re-inserting all edges is linear in
         // the length of the list
-        var cur_after: Option[DoubleLinkedList.LinkedNode[Fragment]] = queue.head
+        var cur_after: Option[Link] = queue.head
         for (elt <- sorted_elts) {
             new_elt = insert(elt.data, cur_after)
             node2edges[node].add(new_elt)
