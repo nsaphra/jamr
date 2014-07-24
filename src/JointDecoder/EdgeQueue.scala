@@ -53,12 +53,12 @@ class EdgeQueue(nodes: Map[Node, Int],
                                  var after: Option[Link]) : LinkedNode[A] = {
             var cur: Option[Link] = after
             while (cur != None) {
-                elt = cur match { case Some(x) => x }
-                cur = elt.next match {
+                after = cur
+                link = cur match { case Some(x) => x }
+                cur = link.next match {
                     case None => None
                     case Some(next) => {
-                        after = cur
-                        if (key_fun(next) > key_fun(e)) {
+                        if (key_fun(next.data) > key_fun(link.data)) {
                             None
                         } else {
                             x.next
