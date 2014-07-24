@@ -18,11 +18,9 @@ class MaxSubGraph(stage1FeatureNames: List[String],
     val conceptInvoker = new ConceptInvoke.Concepts(phraseConceptPairs)
 
     val eliminatedNodes = new Map[Node, Set[Node]]((
-        for (node <- nodes)
-        node -> Set()))
+        for (node <- nodes) yield node -> Set()))
     val rootToFrag = new Map[Node, Concept]( // TODO eliminate root-only restriction
-        for (node <- nodes)
-        node -> Set())
+        for (node <- nodes) yield node -> Set())
 
     var graph = Graph.empty
 
@@ -67,7 +65,9 @@ class MaxSubGraph(stage1FeatureNames: List[String],
             def conditionalNodeAdd(n: Node) {
                 if (!graph.hasNode(n)) {
                     graph.addNode(n)
-                    queue.nodeAdded(n)
+                    for (e <- queue.nodeAdded(n)) {
+                        graph.addEdge(e)
+                    }
                 }
             }
 

@@ -137,7 +137,6 @@ class EdgeQueue(nodes: Map[Node, Int],
     def adjustEdges(node: Node) : List[Fragment] {
         // Subtracts node weight from its edges
         // @return A list of fragments that can be added to graph immediately
-
         edges_to_confirm = new List[Edge]()
 
         if (node.weight == 0) {
@@ -180,9 +179,9 @@ class EdgeQueue(nodes: Map[Node, Int],
         return edges_to_confirm
     }
 
-    def nodeAdded(node: Node) {
+    def nodeAdded(node: Node) : List[Fragment] {
         removeAll(eliminatedNodes(node)
-        adjustEdges(node)
+        return adjustEdges(node)
     }
 
     def dequeue() : Option[Edge] = {
