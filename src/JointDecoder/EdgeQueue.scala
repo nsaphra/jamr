@@ -33,7 +33,7 @@ class EdgeQueue(nodes: Map[Node, Int],
         }
 
         val tail: Option[LinkedNode[A]] = None
-        var head = stableSort(list, (x,y) => key_fun(x) > key_fun(y)).foldRight(tail) {
+        var head = stableSort(list, key_fun).foldLeft(tail) {
             (z, f) => LinkedNode[A](f, z)
         }
 
