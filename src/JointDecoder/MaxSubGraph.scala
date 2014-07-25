@@ -11,80 +11,44 @@ class MaxSubGraph(stage1FeatureNames: List[String],
                   stage2FeatureNames: List[String],
                   labelSet: Array[(String, Int)]) extends Decoder {
 
+    val nodeWeights : Array[Double] = Array(.37, .2893)
+    val edgeWeights : Array[Array[Double]] = Array(Array(),Array())
+    val excludesNodes : Array[Set[Int]] = Array(Set(1), Set(1))
+
     val weights = FeatureVector(labelSet.map(_._1))
     val stage1Features = new ConceptInvoke.Features(stage1FeatureNames)
     val stage2Features = new GraphDecoder.Features(stage2FeatureNames, weights.labelset)
 
     val conceptInvoker = new ConceptInvoke.Concepts(phraseConceptPairs)
 
-    val eliminatedNodes = new Map[Node, Set[Node]]((
-        for (node <- nodes) yield node -> Set()))
-    val rootToFrag = new Map[Node, Concept]( // TODO eliminate root-only restriction
-        for (node <- nodes) yield node -> Set())
-
-    var graph = Graph.empty
-
-    def addPotentialNodes() : List[(Node, Int)] = {
-        // Only adds concept root nodes for now
-        val sentence = input.sentence
-        return for (i <- Range(0, sentence.size)) {
-            var conceptList = conceptInvoker.invoke(input,i)
-            for (concept <- conceptList) yield {
-                val score = stage1Features.localScore(input, concept, i, i + concept.words.size)
-                root = concept.graphFrag.getRoot()
-                rootToFrag[root] = concept
-                graph.addNode(sentence, i, i + concept.words.size, root)
-                (concept, score)
-            }
-        }
-        // TODO eliminatedNodes filling
-    }
-
-    def fillEliminatedNodes() = {
-        // Fill out structure containing eliminated nodes
-        throw new notImplementedError()
-    }
-
-    def addPotentialEdges() : List[(Edge, Int)] = {
-        for { node1 <- graph.nodes
-              (label, node2) <- node1.relations } {
-        }
-
-        // Edge weights are label weight + both node weights
-        throw new notImplementedError()
-    }
-
     def decode(input: Input) : FastFeatureVector.DecoderResult = {
-        val nodes = addPotentialNodes()
-        val edges = addPotentialEdges()
-        fillEliminatedNodes()
-        simplifyGraph()
-        val queue = new EdgeQueue(nodes, edges, eliminatedNodes)
+        var graph = Graph.empty
+        val queue = new EdgeQueue(nodeWeights, edgeWeights, excludesNodes)
+        var feats = new FeatureVector(weights.labelset)
+        // TODO actually modify feats
 
-        def confirmEdge(edge: Edge) {
-            def conditionalNodeAdd(n: Node) {
-                if (!graph.hasNode(n)) {
-                    graph.addNode(n)
-                    for (e <- queue.nodeAdded(n)) {
+        def confirmEdge(edge: (Int, Int)) {
+            def conditionalNodeAdd(node: Int) {
+                if (!graph.hasNode(node)) {
+                    graph.addNode(node)
+                    for (e <- queue.nodeAdded(node)) {
                         graph.addEdge(e)
                     }
                 }
             }
 
-            conditionalNodeAdd(edge.node1)
-            conditionalNodeAdd(edge.node2)
+            conditionalNodeAdd(edge._1)
+            conditionalNodeAdd(edge._2)
             graph.addEdge(edge)
         }
 
-        var x: Option[Edge] = queue.shift()
+        var x: Option[(Int, Int)] = queue.shift()
         while (x != None) {
             val edge = x match { case Some(e) => e }
             confirmEdge(edge)
             x = queue.dequeue()
         }
 
-        return DecoderResult()
-
-        throw new notImplementedError()
+        return DecoderResult(graph, feats, weights.dot(feats))
     }
 }
