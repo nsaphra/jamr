@@ -7,9 +7,9 @@ import scala.collection.mutable.Map
 import scala.collection.mutable.Set
 import scala.util.Sorting.stableSort
 
-class EdgeQueue(nodes: Map[Node, Int],
-                edges: Map[Edge, Int],
-                eliminatedNodes: Node => Set[Node]) {
+class EdgeQueue(nodeWeights: Array[Double],
+                edgeWeights: Array[Array[Double]],
+                eliminatedNodes: Int => Set[Int]) {
 
     case class Fragment(edge: Edge,
                         totalScore: Int,
@@ -19,24 +19,26 @@ class EdgeQueue(nodes: Map[Node, Int],
 
     // Queue of edges sorted with highest scores on top
     var queue = new SortedDoubleLinkedList(
-        for (edge <- edges) yield
-            Fragment(edge, edge.weight + edge.node1.weight + edge.node2.weight),
+        for (edgeweights.zipWithIndex.zipWithIndex for (edge <- edges) yield
+            Fragment(edge, edge.weight + nodeWeights[edge._1] + nodeWeights[edge._2]),
         (x: Fragment) => x.totalWeight
     )
 
     // Map of nodes to the Edge LinkedNodes connected to them
     var node2links: Map[Node, Set[Link]] = {
-        m = (for (node <- nodes)
-            yield node -> Set[Link]()))
-        queue.foreach(x =>
-            m[x.data.node1] += x
-            m[x.data.node2] += x)
+        m = nodes.zipWithIndex foreach {
+            case (node, w) => yield (node -> Set[Link]())
+        }
+        queue foreach { link => {
+            m[link.data.edge._1] += link
+            m[link.data.edge._2] += link
+        } }
         m
     }
 
     def remove(link: Link) : Fragment {
-        node2links[e.data.node1] -= link
-        node2links[e.data.node2] -= link
+        node2links[link.data.edge._1] -= link
+        node2links[link.data.edge._2] -= link
         return queue.remove(link)
     }
 
@@ -82,7 +84,7 @@ class EdgeQueue(nodes: Map[Node, Int],
         // Re-inserting in order means re-inserting all edges is linear in
         // the length of the list
         for (link <- queue.insertAll(new_frags)) {
-            node2links[node].add(link)
+            node2links[node] += link
         }
 
         return edges_to_confirm

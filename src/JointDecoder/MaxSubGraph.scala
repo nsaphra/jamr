@@ -23,7 +23,7 @@ class MaxSubGraph(stage1FeatureNames: List[String],
 
     def decode(input: Input) : FastFeatureVector.DecoderResult = {
         var graph = Graph.empty
-        val queue = new EdgeQueue(nodeWeights, edgeWeights, excludesNodes)
+        val queue = new EdgeQueue(nodeWeights, edgeWeights, x => excludesNodes[x])
         var feats = new FeatureVector(weights.labelset)
         // TODO actually modify feats
 
