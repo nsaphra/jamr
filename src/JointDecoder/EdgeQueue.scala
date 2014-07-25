@@ -11,107 +11,6 @@ class EdgeQueue(nodes: Map[Node, Int],
                 edges: Map[Edge, Int],
                 eliminatedNodes: Node => Set[Node]) {
 
-    class DoubleLinkedList[A](list: List[A],
-                              key_fun: A => math.Ordering) extends Iterable[LinkedNode[A]] {
-
-        class LinkedNode[A](data: A, var next: Option[LinkedNode[A]]) {
-
-            var prev: Option[LinkedNode[A]] = next match {
-                case None => None
-                case Some(n) => {
-                    prev_node = n.prev
-                    n.prev = this
-                    prev_node match {
-                        case None => None
-                        case Some(p) => {
-                            p.next = this
-                            Some(p)
-                        }
-                    }
-                }
-            }
-        }
-
-        val tail: Option[LinkedNode[A]] = None
-        var head = stableSort(list, key_fun).foldLeft(tail) {
-            (z, f) => LinkedNode[A](f, z)
-        }
-
-        def prepend(data: A) : LinkedNode[A] = {
-            head = LinkedNode[A](data, head)
-            return head
-        }
-
-        def insertAfter(data: A, node: Option[LinkedNode[A]]) : LinkedNode[A] = node match {
-            case None => prepend(A)
-            case Some(n) => {
-                LinkedNode[A](data, n.next)
-            }
-        }
-
-        def insertSomewhereAfter(e: Fragment,
-                                 var after: Option[Link]) : LinkedNode[A] = {
-            var cur: Option[Link] = after
-            while (cur != None) {
-                after = cur
-                link = cur match { case Some(x) => x }
-                cur = link.next match {
-                    case None => None
-                    case Some(next) => {
-                        if (key_fun(next.data) > key_fun(link.data)) {
-                            None
-                        } else {
-                            x.next
-                        }
-                    }
-                }
-            }
-            return queue.insertAfter(e, after)
-        }
-
-        def insertAll(new_data: List[A]) : List[LinkedNode[A]] = {
-            sorted_data = stableSort(new_data, (x,y) => key_fun(x) < key_fun(y))
-            var cur_after: Option[Link] = head
-            for (datum <- sorted_data) {
-                new_elt = insertSomewhereAfter(elt.data, cur_after)
-                cur_after = Some(new_elt)
-                yield new_elt
-            }
-        }
-
-        def remove(node: LinkedNode[A]) : A {
-            node.prev match {
-                case None => { head = node.next }
-                case Some(x) => { x.next = node.next }
-            }
-            node.next match {
-                case Some(x) => { x.prev = node.prev }
-            }
-
-            return node.data
-        }
-
-        def foreach[U](f: LinkedNode[A] => U) {
-            var node: Option[LinkedNode[A]] = head
-            while (node != None) {
-                node match {
-                    case Some(x) => f(x)
-                }
-                node = node.next
-            }
-        }
-
-        def dequeue() : Option[LinkedNode[A]] = {
-            return head match {
-                case None => None
-                case Some(x) => {
-                    remove(x)
-                    Some(x)
-                }
-            }
-        }
-    }
-
     case class Fragment(edge: Edge,
                         totalScore: Int,
                         nodesWeighed: Int = 2) extends (Edge, Int, Int)(edge, totalScore, nodesWeighed)
@@ -119,7 +18,7 @@ class EdgeQueue(nodes: Map[Node, Int],
     type Link = DoubleLinkedList.LinkedNode[Fragment]
 
     // Queue of edges sorted with highest scores on top
-    var queue = new DoubleLinkedList(
+    var queue = new SortedDoubleLinkedList(
         for (edge <- edges) yield
             Fragment(edge, edge.weight + edge.node1.weight + edge.node2.weight),
         (x: Fragment) => x.totalWeight
