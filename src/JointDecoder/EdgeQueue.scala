@@ -25,7 +25,7 @@ class EdgeQueue(nodes: Map[Node, Int],
     )
 
     // Map of nodes to the Edge LinkedNodes connected to them
-    var node2edges: Map[Node, Set[Link]] = {
+    var node2links: Map[Node, Set[Link]] = {
         m = (for (node <- nodes)
             yield node -> Set[Link]()))
         queue.foreach(x =>
@@ -34,19 +34,19 @@ class EdgeQueue(nodes: Map[Node, Int],
         m
     }
 
-    def remove(elt: Link) : Fragment {
-        node2edges[e.data.node1] -= elt
-        node2edges[e.data.node2] -= elt
-        return queue.remove(elt)
+    def remove(link: Link) : Fragment {
+        node2links[e.data.node1] -= link
+        node2links[e.data.node2] -= link
+        return queue.remove(link)
     }
 
     def removeAllEdges(Node node) {
-        for (e <- node2edges[node]) {
-            remove(e)
+        for (link <- node2links[node]) {
+            remove(link)
         }
     }
 
-    def adjustEdges(node: Node) : List[Fragment] {
+    def adjustFragmentWeights(node: Node) : List[Fragment] {
         // Subtracts node weight from its edges
         // @return A list of fragments that can be added to graph immediately
         edges_to_confirm = new List[Edge]()
@@ -55,34 +55,34 @@ class EdgeQueue(nodes: Map[Node, Int],
             return
         }
 
-        val old_elts = node2edges[node]
-        node2edges[Node] = new Set[Link]()
-        for (elt <- old_elts) {
-            queue.remove(elt)
+        val old_links = node2links[node]
+        node2links[Node] = new Set[Link]()
+        for (link <- old_links) {
+            queue.remove(link)
         }
 
         var new_frags: List[Fragment] = {
-            for (elt <- old_edge_elts) {
-                edge = elt.data
-                edge.totalWeight -= node.weight
-                edge.nodesWeighed--
-                if (edge.nodesWeighed != 0) {
-                    yield edge
+            for (link <- old_links) {
+                frag = link.data
+                frag.totalWeight -= node.weight
+                frag.nodesWeighed--
+                if (frag.nodesWeighed != 0) {
+                    yield frag
                 }
                 else {
-                    if (edge.totalWeight == 0) {
-                        yield edge
-                    } else if (edge.totalWeight > 0) {
-                        edges_to_confirm.append(edge.edge)
-                    } // else edge.totalWeight < 0; remove node
+                    if (frag.totalWeight == 0) {
+                        yield frag
+                    } else if (frag.totalWeight > 0) {
+                        edges_to_confirm.append(frag.edge)
+                    } // else frag.totalWeight < 0; remove node
                 }
             }
         }
 
         // Re-inserting in order means re-inserting all edges is linear in
         // the length of the list
-        for (elt <- queue.insertAll(new_frags)) {
-            node2edges[node].add(new_elt)
+        for (link <- queue.insertAll(new_frags)) {
+            node2links[node].add(link)
         }
 
         return edges_to_confirm
@@ -92,13 +92,13 @@ class EdgeQueue(nodes: Map[Node, Int],
         for (enemy <- eliminatedNodes(node)) {
             removeAllEdges(enemy)
         }
-        return adjustEdges(node)
+        return adjustFragmentWeights(node)
     }
 
     def dequeue() : Option[Edge] = {
         return queue.head match {
             case None => None
-            case Some(elt) => Some(remove(elt))
+            case Some(link) => Some(remove(link).edge)
         }
     }
 }
