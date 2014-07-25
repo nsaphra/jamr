@@ -28,7 +28,8 @@ class EdgeQueue(nodeWeights: Array[Double],
     )
 
     // Map of nodes to the Edge LinkedNodes connected to them
-    var node2links: Map[Node, Set[Link]] = {
+    var node2links: Map[Int, Set[Link]] = {
+        // TODO make it an array like everything else
         m = nodes.zipWithIndex foreach {
             case (node, w) => yield (node -> Set[Link]())
         }
@@ -45,23 +46,23 @@ class EdgeQueue(nodeWeights: Array[Double],
         return queue.remove(link)
     }
 
-    def removeAllEdges(Node node) {
+    def removeAllEdges(node: Int) {
         for (link <- node2links[node]) {
             remove(link)
         }
     }
 
-    def adjustFragmentWeights(node: Node) : List[Fragment] {
+    def adjustFragmentWeights(node: Int) : List[Fragment] {
         // Subtracts node weight from its edges
         // @return A list of fragments that can be added to graph immediately
         edges_to_confirm = new List[(Int, Int)]()
 
-        if (node.weight == 0) {
+        if (nodeWeights[node] == 0) {
             return
         }
 
         val old_links = node2links[node]
-        node2links[Node] = new Set[Link]()
+        node2links[Int] = new Set[Link]()
         for (link <- old_links) {
             queue.remove(link)
         }
@@ -93,14 +94,14 @@ class EdgeQueue(nodeWeights: Array[Double],
         return edges_to_confirm
     }
 
-    def nodeAdded(node: Node) : List[Fragment] {
+    def nodeAdded(node: Int) : List[Fragment] {
         for (enemy <- eliminatedNodes(node)) {
             removeAllEdges(enemy)
         }
         return adjustFragmentWeights(node)
     }
 
-    def dequeue() : Option[Edge] = {
+    def dequeue() : Option[(Int, Int)] = {
         return queue.head match {
             case None => None
             case Some(link) => Some(remove(link).edge)
