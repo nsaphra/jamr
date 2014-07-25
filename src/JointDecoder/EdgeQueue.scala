@@ -11,16 +11,19 @@ class EdgeQueue(nodeWeights: Array[Double],
                 edgeWeights: Array[Array[Double]],
                 eliminatedNodes: Int => Set[Int]) {
 
-    case class Fragment(edge: Edge,
+    case class Fragment(edge: (Int, Int),
                         totalScore: Int,
-                        nodesWeighed: Int = 2) extends (Edge, Int, Int)(edge, totalScore, nodesWeighed)
+                        nodesWeighed: Int = 2) extends ((Int, Int), Int, Int)(edge, totalScore, nodesWeighed)
 
     type Link = DoubleLinkedList.LinkedNode[Fragment]
 
     // Queue of edges sorted with highest scores on top
     var queue = new SortedDoubleLinkedList(
-        for (edgeweights.zipWithIndex.zipWithIndex for (edge <- edges) yield
-            Fragment(edge, edge.weight + nodeWeights[edge._1] + nodeWeights[edge._2]),
+        edgeWeights.zipWithIndex foreach { case (node1, relns) =>
+            relns.zipWithIndex foreach yield { case (node2, weight) =>
+                Fragment((node1, node2), weight + nodeWeights[node1] + nodeWeights[node2])
+            }
+        },
         (x: Fragment) => x.totalWeight
     )
 
@@ -51,7 +54,7 @@ class EdgeQueue(nodeWeights: Array[Double],
     def adjustFragmentWeights(node: Node) : List[Fragment] {
         // Subtracts node weight from its edges
         // @return A list of fragments that can be added to graph immediately
-        edges_to_confirm = new List[Edge]()
+        edges_to_confirm = new List[(Int, Int)]()
 
         if (node.weight == 0) {
             return
