@@ -70,7 +70,7 @@ class EdgeQueue(nodes: Map[Node, Int],
         }
 
         def insertAll(new_data: List[A]) : List[LinkedNode[A]] = {
-            sorted_data = stableSort(new_data, key_fun)
+            sorted_data = stableSort(new_data, (x,y) => key_fun(x) < key_fun(y))
             var cur_after: Option[Link] = head
             for (datum <- sorted_data) {
                 new_elt = insertSomewhereAfter(elt.data, cur_after)
