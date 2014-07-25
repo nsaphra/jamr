@@ -89,7 +89,9 @@ class EdgeQueue(nodes: Map[Node, Int],
     }
 
     def nodeAdded(node: Node) : List[Fragment] {
-        removeAll(eliminatedNodes(node)
+        for (enemy <- eliminatedNodes(node)) {
+            removeAllEdges(enemy)
+        }
         return adjustEdges(node)
     }
 
