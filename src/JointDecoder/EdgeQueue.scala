@@ -2,99 +2,99 @@ package edu.cmu.lti.nlp.amr.JointDecoder
 import edu.cmu.lti.nlp.amr._
 import edu.cmu.lti.nlp.amr.FastFeatureVector._
 
-import scala.collection.mutable.List
 import scala.collection.mutable.Map
 import scala.collection.mutable.Set
-import scala.util.Sorting.stableSort
+import scala.collection.mutable.ArrayBuffer
 
 class EdgeQueue(nodeWeights: Array[Double],
                 edgeWeights: Array[Array[Double]],
                 eliminatedNodes: Int => Set[Int]) {
 
-    case class Fragment(edge: (Int, Int),
-                        totalScore: Int,
-                        nodesWeighed: Int = 2) extends ((Int, Int), Int, Int)(edge, totalScore, nodesWeighed)
+    case class Edge(node1: Int, node2: Int)
 
-    type Link = DoubleLinkedList.LinkedNode[Fragment]
+    case class Fragment(edge: Edge,
+                        totalWeight: Double,
+                        nodesWeighed: Int = 2)
+
+    type Link = LinkedNode[Fragment]
 
     // Queue of edges sorted with highest scores on top
-    var queue = new SortedDoubleLinkedList(
-        edgeWeights.zipWithIndex foreach { case (node1, relns) =>
-            relns.zipWithIndex foreach yield { case (node2, weight) =>
-                Fragment((node1, node2), weight + nodeWeights[node1] + nodeWeights[node2])
-            }
+    var queue = new SortedDoubleLinkedList[Fragment](
+        // TODO do we want to include self-edges?
+        for { (weight2, node2) <- nodeWeights.zipWithIndex
+              (weight1, node1) <- nodeWeights.slice(0, node2).zipWithIndex } yield {
+            Fragment(Edge(node1, node2), edgeWeights(node1)(node2) + weight1 + weight2)
         },
-        (x: Fragment) => x.totalWeight
+        (x: Fragment, y: Fragment) => x.totalWeight > y.totalWeight
     )
 
+/*
     // Map of nodes to the Edge LinkedNodes connected to them
     var node2links: Map[Int, Set[Link]] = {
         // TODO make it an array like everything else
-        m = nodes.zipWithIndex foreach {
-            case (node, w) => yield (node -> Set[Link]())
+        val m: Map[Int, Set[Link]] = nodeWeights.zipWithIndex map { case (w, node) =>
+            (node -> Set[Link]())
         }
-        queue foreach { link => {
-            m[link.data.edge._1] += link
-            m[link.data.edge._2] += link
-        } }
+        for (link <- queue) {
+            m(link.data.edge.node1) += link
+            m(link.data.edge.node2) += link
+        }
         m
     }
 
-    def remove(link: Link) : Fragment {
-        node2links[link.data.edge._1] -= link
-        node2links[link.data.edge._2] -= link
+    def remove(link: Link) : Fragment = {
+        node2links(link.data.edge.node1) -= link
+        node2links(link.data.edge.node2) -= link
         return queue.remove(link)
     }
 
     def removeAllEdges(node: Int) {
-        for (link <- node2links[node]) {
+        for (link <- node2links(node)) {
             remove(link)
         }
     }
 
-    def adjustFragmentWeights(node: Int) : List[Fragment] {
+    def adjustFragmentWeights(node: Int) : Array[(Int, Int)] = {
         // Subtracts node weight from its edges
         // @return A list of fragments that can be added to graph immediately
-        edges_to_confirm = new List[(Int, Int)]()
+        var edges_to_confirm = new Array[(Int, Int)]
 
-        if (nodeWeights[node] == 0) {
-            return
+        if (nodeWeights(node) == 0) {
+            return edges_to_confirm
         }
 
-        val old_links = node2links[node]
-        node2links[Int] = new Set[Link]()
+        val old_links: Set[Link] = node2links(node)
+        node2links(node) = new Set[Link]
         for (link <- old_links) {
             queue.remove(link)
         }
 
-        var new_frags: List[Fragment] = {
-            for (link <- old_links) {
-                frag = link.data
-                frag.totalWeight -= node.weight
-                frag.nodesWeighed--
-                if (frag.nodesWeighed != 0) {
-                    yield frag
-                }
-                else {
-                    if (frag.totalWeight == 0) {
-                        yield frag
-                    } else if (frag.totalWeight > 0) {
-                        edges_to_confirm.append(frag.edge)
-                    } // else frag.totalWeight < 0; remove node
-                }
+        var new_frags = new ArrayBuffer[Fragment]
+        for (link <- old_links) {
+            val frag = link.data
+            frag.totalWeight -= node.weight
+            frag.nodesWeighed -= 1
+
+            // If an edge is connecting two nodes already in the graph,
+            // we decide to include or toss it based on whether the weight
+            // is positive, since we no longer consider whether to include its nodes.
+            if (frag.nodesWeighed != 0) {
+                new_frags.append(frag)
+            } else if (frag.totalWeight > 0) {
+                edges_to_confirm.append((frag.edge.node1, frag.edge.node2))
             }
         }
 
         // Re-inserting in order means re-inserting all edges is linear in
         // the length of the list
         for (link <- queue.insertAll(new_frags)) {
-            node2links[node] += link
+            node2links(node) += link
         }
 
         return edges_to_confirm
     }
 
-    def nodeAdded(node: Int) : List[Fragment] {
+    def nodeAdded(node: Int) : List[Fragment] = {
         for (enemy <- eliminatedNodes(node)) {
             removeAllEdges(enemy)
         }
@@ -107,4 +107,5 @@ class EdgeQueue(nodeWeights: Array[Double],
             case Some(link) => Some(remove(link).edge)
         }
     }
+*/
 }
