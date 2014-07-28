@@ -1,38 +1,31 @@
 package edu.cmu.lti.nlp.amr.JointDecoder
 import edu.cmu.lti.nlp.amr._
 
-import scala.collection.mutable.List
+import scala.reflect.ClassTag
+import scala.util.Sorting.stableSort
 
-class SortedDLL(list: List[A],
-                key_fun: A => math.Ordering) extends DoubleLinkedList[A](stableSort(list, key_fun)) {
+class SortedDoubleLinkedList[A: ClassTag](list: Seq[A],
+    sort_fun: (A, A) => Boolean) extends DoubleLinkedList[A](stableSort(list, sort_fun)) {
 
-    def insertSomewhereAfter(e: Fragment,
-                             var after: Option[Link]) : LinkedNode[A] = {
-        var cur: Option[Link] = after
-        while (cur != None) {
-            after = cur
-            link = cur match { case Some(x) => x }
-            cur = link.next match {
-                case None => None
-                case Some(next) => {
-                    if (key_fun(next.data) > key_fun(link.data)) {
-                        None
-                    } else {
-                        x.next
-                    }
-                }
+    def insertSomewhereAfter(data: A, after: Option[LinkedNode[A]]) : LinkedNode[A] = {
+        var cur: Option[LinkedNode[A]] = after
+        while (cur.isDefined) {
+            if (cur.get.next.isDefined &&
+                sort_fun(cur.get.next.get.data, data)) {
+                cur = cur.get.next
+            } else {
+                return this.insert(data, cur)
             }
         }
-        return queue.insert(e, after)
+        return this.insert(data, cur)
     }
 
-    def insertAll(new_data: List[A]) : List[LinkedNode[A]] = {
-        sorted_data = stableSort(new_data, (x,y) => key_fun(x) < key_fun(y))
-        var cur_after: Option[Link] = head
-        for (datum <- sorted_data) {
-            new_elt = insertSomewhereAfter(elt.data, cur_after)
-            cur_after = Some(new_elt)
-            yield new_elt
+    def insertAll(new_data: Seq[A]) : Array[LinkedNode[A]] = {
+        val sorted_data = stableSort(new_data, sort_fun)
+        var cur_after: Option[LinkedNode[A]] = top
+        for (datum <- sorted_data) yield {
+            cur_after = Some(insertSomewhereAfter(datum, cur_after))
+            cur_after.get
         }
     }
 }

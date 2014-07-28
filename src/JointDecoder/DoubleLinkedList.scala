@@ -19,7 +19,7 @@ class LinkedNode[A](val data: A, var next: Option[LinkedNode[A]]) {
     }
 }
 
-class DoubleLinkedList[A](list: List[A]) extends Iterable[LinkedNode[A]] {
+class DoubleLinkedList[A](list: Seq[A]) extends Iterable[LinkedNode[A]] {
 
     var top: Option[LinkedNode[A]] = list.foldLeft(None.asInstanceOf[Option[LinkedNode[A]]]) {
         (z, f) => Some(new LinkedNode[A](f, z))
