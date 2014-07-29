@@ -2,12 +2,11 @@ package edu.cmu.lti.nlp.amr.JointDecoder
 import edu.cmu.lti.nlp.amr._
 import edu.cmu.lti.nlp.amr.FastFeatureVector._
 
-import scala.collection.mutable.List
+import scala.collection.mutable.HashSet
 import scala.collection.mutable.Map
-import scala.collection.mutable.Set
 
 class MaxSubGraph(stage1FeatureNames: List[String],
-                  phraseConceptPairs: Array[ConceptInvoke.PhraseConceptPair)],  // this is the concept table
+                  phraseConceptPairs: Array[ConceptInvoke.PhraseConceptPair],  // this is the concept table
                   stage2FeatureNames: List[String],
                   labelSet: Array[(String, Int)]) extends Decoder {
 
@@ -23,14 +22,16 @@ class MaxSubGraph(stage1FeatureNames: List[String],
 
     def decode(input: Input) : FastFeatureVector.DecoderResult = {
         var graph = Graph.empty
+        var nodesInGraph = new HashSet[Int]
         val queue = new EdgeQueue(nodeWeights, edgeWeights, x => excludesNodes[x])
         var feats = new FeatureVector(weights.labelset)
         // TODO actually modify feats
 
         def confirmEdge(edge: (Int, Int)) {
             def conditionalNodeAdd(node: Int) {
-                if (!graph.hasNode(node)) {
+                if (!nodesInGraph.contains(node)) {
                     graph.addNode(node)
+                    nodesInGraph += node
                     for (e <- queue.nodeAdded(node)) {
                         graph.addEdge(e)
                     }
